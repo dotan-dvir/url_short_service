@@ -4,11 +4,7 @@ from datetime import datetime
 from util.stringutil import validateString
 from .basehandler import BaseHandler
 
-from pymemcache.client.hash import Client
-
 import logging
-
-
 
 class UrlsHandler(BaseHandler):
     '''
@@ -16,14 +12,14 @@ class UrlsHandler(BaseHandler):
     instance and reading the full URL on a redirect request
     '''
 
-    def __init__(self,dbURL,dbName,memcached_location):
+    def __init__(self,dbURL,dbName):
         '''
         The constructor
         :param dbURL: the URL (mongofb://host:port) of the mongo instance
         :param dbName: the name of the database to use
         '''
         super().__init__(dbURL,dbName,"urls")
-        self.memcached = Client((memcached_location,11211),connect_timeout=1,timeout=1)
+
 
     def insertURL(self,userName,urlLongForm,urlShortForm):
         '''
@@ -52,12 +48,6 @@ class UrlsHandler(BaseHandler):
         except:
             objectId = None
 
-        if(objectId != None):
-            try:
-                self.memcached.set(shortform,longform)
-            except:
-                pass
-
         if(objectId == None):
             return False, "Failed to commit changes to the database"
         else:
@@ -69,46 +59,23 @@ class UrlsHandler(BaseHandler):
         :param shortForm: the short form of the URL
         :return:
         '''
-
-
-        longForm = None
-        inCache = False
-
-        try:
-            longForm = self.memcached.get(shortForm)
-            inCache = True
-        except:
-            longForm = None
-
         if(super().isConnected() == False):
             return False,"Internal server error"
 
         if(validateString(shortForm)==False):
             return False,"Cannot redirect from empty values"
 
+        result = None
 
-
-        if(longForm == None):
-
+        try:
+            result = self.dbCollection.find_one({"shortform":shortForm})
+        except:
             result = None
 
-            try:
-                result = self.dbCollection.find_one({"shortform":shortForm})
-                longForm = result["longform"]
-            except:
-                result = None
-                longForm == None
-
-        if(longForm == None):
+        if(result == None):
             return False,"URL not found"
 
-        if(inCache == False):
-            try:
-                self.memcached.set(shortForm,longForm)
-            except:
-                pass
-
-        return True, longForm
+        return True, result["longform"]
 
 
     def retrieveURLsForUser(self,userName):
@@ -136,6 +103,26 @@ class UrlsHandler(BaseHandler):
 
 
         return True,urlsForUser
+
+    def retrieveURLForUser(self,userName,shortForm):
+        if (super().isConnected() == False):
+            return False, "Internal server errror"
+
+        result = None
+
+        if (validateString(userName) == False):
+            return False, result
+
+
+        try:
+            result = self.dbCollection.find_one({"username":userName,"shortform":shortForm})
+        except:
+            result = None
+
+        if(result == None):
+            return False, result
+
+        return True,result
 
 
 if __name__ == "__main__":

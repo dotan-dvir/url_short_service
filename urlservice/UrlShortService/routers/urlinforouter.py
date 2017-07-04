@@ -21,7 +21,12 @@ class UrlInfoRouter(BaseRouter):
             sendErrorMessage(response,errorCode,message)
             return
 
-        status,urlLongForm = self.urlsHandler.retrieveURLLongForm(shortform)
+        userName = request.get_header("username",False,"")
+
+        if(userName == None):
+            sendErrorMessage(response,falcon.HTTP_500,"Internal server error")
+
+        status,urlInfo = self.urlsHandler.retrieveURLForUser(userName,shortform)
 
         if(status == False):
             sendErrorMessage(response,falcon.HTTP_404,"Short form URL not found: "+shortform)
@@ -35,7 +40,7 @@ class UrlInfoRouter(BaseRouter):
 
 
         results = {}
-        results["url"] = urlLongForm
+        results["url"] = urlInfo["longform"]
         results["shortform"] = shortform
         results["visits"] = urlVisits
 
