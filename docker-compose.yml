@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+   mongodb:
+     build: ./mongodb
+     volumes:
+       - ./mongodb/data:/data
+     ports:
+       - 17027:17027
+    
+   memcached:
+      build: ./memcached
+      ports:
+        - 11211:11211
+
+   urlservice:
+     build: ./urlservice
+     volumes:
+       - ./urlservice/UrlShortService/:/usr/local/bin/UrlShortService
+     ports:
+       - 8080:8080
+     depends_on:
+       - mongodb
+       - memcached
+
